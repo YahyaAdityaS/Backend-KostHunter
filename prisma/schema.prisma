@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  owner
+  society
+}
+
+enum Gender {
+  male
+  female
+  all
+}
+
+enum Status {
+  pending
+  accept
+  reject
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String @default("")
+  email    String @unique @default("")
+  password String @default("")
+  phone    String @default("")
+  role     Role
+
+  kos     Kos[]
+  reviews Review[]
+  books   Book[]
+}
+
+model Kos {
+  id            Int    @id @default(autoincrement())
+  userId        Int
+  name          String @default("")
+  address       String @default("")
+  pricePerMonth Int    @default(0)
+  facility      String @default("")
+  description   String @default("")
+  picture       String @default("")
+  gender        Gender
+
+  user    User     @relation(fields: [userId], references: [id])
+  reviews Review[]
+  books   Book[]
+}
+
+model Review {
+  id      Int    @id @default(autoincrement())
+  kosId   Int
+  comment String
+  userId  Int
+
+  kos  Kos  @relation(fields: [kosId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Book {
+  id        Int      @id @default(autoincrement())
+  kosId     Int
+  userId    Int
+  startDate DateTime
+  endDate   DateTime
+  status    Status
+
+  kos  Kos  @relation(fields: [kosId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}

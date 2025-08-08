@@ -1,0 +1,159 @@
+import { Request, Response } from "express"; //impor ekspress
+import { $Enums, PrismaClient, Status } from "@prisma/client"; //
+import { request } from "http";
+import { BASE_URL } from "../global";
+import fs from "fs"
+import { exist } from "joi";
+import path from "path";
+import { error } from "console";
+
+const prisma = new PrismaClient({ errorFormat: "pretty" })
+export const getAllKos = async (request: Request, response: Response) => { //endpoint perlu diganti ganti pakai const kalau tetap let
+    //menyiapkan data input dulu(request) --> request
+    try {
+        //input
+        const { search } = request.query //query boleh ada atau tidak params harus ada
+        //main
+        const allMenus = await prisma.kos.findMany({
+            where: { name: { contains: search?.toString() || "" } } //name buat mencari apa di seacrh, contains == like(mysql) [mengandung kata apa], OR/|| (Salah satu true semaunya all), ""untuk menampilkan kosong
+        })
+        //output
+        return response.json({ //tampilkan juga statusnya(untuk inidkator)
+            status: true,
+            data: allMenus,
+            message: 'Ini data kos-nya yaa'
+        }).status(200) //100 200 Berhasil
+    }
+    catch (eror) {
+        return response
+            .json({
+                status: false,
+                message: `Yaa get all kos-nya error ${eror}`
+            })
+            .status(400)
+    }
+}
+
+export const createKos = async (request: Request, response: Response) => {
+    try {
+        const { name, address, pricePerMonth, facility, description, picture, gender, userId } = request.body
+        if(!userId) {
+            return response.status(400).json({
+                status: false,
+                messege: 'userId wajib di isi'
+            })
+        }
+
+
+        let filename = "" //untuk upload foto menu
+        if (request.file) filename = request.file.filename
+
+        const newKos = await prisma.kos.create({ //await menunngu lalu dijalankan
+            data: { name, address, pricePerMonth: Number(pricePerMonth), facility, description, picture:filename, gender, userId: Number(userId) }
+        })
+        return response.json({
+            status: true,
+            data: newKos,
+            message: `Buat kos bisa yaa`
+        }).status(200);
+    }
+    catch (eror) {
+        return response
+            .json({
+                status: false,
+                message: `Yaa buat kos-nya error ${eror}`
+            }).status(400);
+    }
+}
+
+export const updateKos = async (request: Request, response: Response) => {
+    try {
+        const { id } = request.params;
+        const {name, address,pricePerMonth, facility, description, gender, userId} = request.body;
+        const findKos = await prisma.kos.findFirst({ where: { id: Number(id) } });
+
+        if (!findKos) {
+            return response.status(404).json({
+                status: false,
+                message: 'Kos tidak ditemukan'
+            });
+        }
+
+        const findUser = await prisma.user.findFirst({ where: { id: Number(userId) } });
+        if (!findUser) {
+            return response.status(404).json({
+                status: false,
+                message: `User dengan id ${userId} tidak ditemukan`
+            })
+        }
+
+        // Default filename dari database
+        let filename = findKos.picture;
+
+        // Kalau ada file baru diupload
+        if (request.file) {
+            filename = request.file.filename;
+            const oldPath = path.join(__dirname, `../public/kos_picture/${findKos.picture}`);
+            const exists = fs.existsSync(oldPath);
+            if (exists && findKos.picture !== '') {
+                fs.unlinkSync(oldPath);
+            }
+        }
+        const updateKos = await prisma.kos.update({
+            where: { id: Number(id) },
+            data: {
+                name: name || findKos.name,
+                address: address || findKos.address,
+                pricePerMonth: pricePerMonth ? Number(pricePerMonth) : findKos.pricePerMonth,
+                description: description || findKos.description,
+                gender: gender || findKos.gender,
+                picture: filename,
+                facility: facility || findKos.facility,
+                userId: userId ? Number(userId) : findKos.userId,
+                // Tambahkan `facility` dan `userId` jika memang ingin diubah
+            }
+        });
+
+        return response.json({
+            status: true,
+            message: 'Kos berhasil diupdate',
+            data: updateKos
+        });
+
+    } catch (error) {
+        console.error(error);
+        return response.status(400).json({
+            status: false,
+            message: `Yaa update kos-nya error ${error}`
+        });
+    }
+};
+
+export const deleteKos = async (request: Request, response: Response) => {
+    try {
+        const { id } = request.params
+        const findMenu = await prisma.kos.findFirst({ where: { id: Number(id) } })
+        if (!findMenu) return response
+            .status(200)
+            .json({ status: false, message: 'Kos dengan id ' + id + ' tidak ditemukan' })
+
+            let path = `${BASE_URL}/../public/kos_picture/$(findKos.picture)`
+            let exists = fs.existsSync(path)
+            if (exists && findMenu.picture !== ``) fs.unlinkSync(path)
+
+        const deletedMenu = await prisma.kos.delete({
+            where: { id: Number(id) }
+        })
+        return response.json({
+            status: true,
+            data: deleteKos,
+            message: 'Kos-nya bisa dihapus yaa'
+        }).status(200)
+    } catch (eror) {
+        return response
+            .json({
+                status: false,
+                message: `Yah delete kos-nya error ${eror}`
+            }).status(400)
+    }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "kosthunter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+   "dev": "nodemon src/index.ts",
+  "test": "ts-node src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.3",
+    "@types/joi": "^17.2.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/md5": "^2.3.5",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.1.0",
+    "@types/nodemon": "^1.19.6",
+    "nodemon": "^3.1.10",
+    "prisma": "^6.13.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "md5": "^2.3.0",
+    "multer": "^2.0.2"
+  }
+}
