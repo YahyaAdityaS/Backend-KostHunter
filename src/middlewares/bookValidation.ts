@@ -1,54 +1,52 @@
 import { NextFunction, Request, Response } from 'express'
 import Joi from 'joi'
+import multer from 'multer'
 
-const orderListSchema = Joi.object({
-    idMenu: Joi.number().required(),
-    quantity: Joi.number().required(),
-    note: Joi.string().optional(),
-})
+/** parser untuk form-data (tanpa upload file) */
+const upload = multer()
 
+/** schema validasi untuk Book */
 const addDataSchema = Joi.object({
-    customer: Joi.string().required(),
-    table_number: Joi.number().min(0).required(),
-    payment_method: Joi.string().valid("CASH", "QRIS").uppercase().required(),
-    status: Joi.string().valid("NEW", "PAID", "DONE").uppercase().required(),
-    idUser: Joi.number().optional(),
-    order_list: Joi.array().items(orderListSchema).min(1).required(),
-    user: Joi.optional()
-})
+    kosId: Joi.number().required(),
+    userId: Joi.number().required(),
+    startDate: Joi.date().iso().required(),
+    endDate: Joi.date().iso().required(),
+    status: Joi.string().valid("pending", "accept", "reject").optional() // default pending
+}). unknown(true)
 
-export const verifyAddOrder = (request: Request, response: Response, next: NextFunction) => {
-    /** validate a request body and grab error if exist */
-    const { error } = addDataSchema.validate(request.body, { abortEarly: false })
-
-
-    if (error) {
-        /** if there is an error, then give a response like this */
-        return response.status(400).json({
-            status: false,
-            message: error.details.map(it => it.message).join()
-        })
-    }
-    return next()
-}
-
-/** create schema when edit status order's data */
 const editDataSchema = Joi.object({
-    status: Joi.string().valid("NEW", "PAID", "DONE").uppercase().required(),
-    user: Joi.optional()
-})
+    kosId: Joi.number().optional(),
+    userId: Joi.number().optional(),
+    startDate: Joi.date().iso().optional(),
+    endDate: Joi.date().iso().optional(),
+    status: Joi.string().valid("pending", "accept", "reject").optional() // default pending
+}). unknown(true)
 
-export const verifyEditStatus = (request: Request, response: Response, next: NextFunction) => {
-    /** validate a request body and grab error if exist */
-    const { error } = editDataSchema.validate(request.body, { abortEarly: false })
+export const verifyCreateBook = [
+    upload.none(), // supaya form-data bisa diparse
+    (request: Request, response: Response, next: NextFunction) => {
+        const { error } = addDataSchema.validate(request.body, { abortEarly: false })
 
-
-    if (error) {
-        /** if there is an error, then give a response like this */
-        return response.status(400).json({
-            status: false,
-            message: error.details.map(it => it.message).join()
-        })
+        if (error) {
+            return response.status(400).json({
+                status: false,
+                message: error.details.map(it => it.message).join(", ")
+            })
+        }
+        return next()
     }
-    return next()
-}
+]
+
+export const verifyEditBook = [
+    upload.none(),
+    (request: Request, response: Response, next: NextFunction) => {
+        const { error } = editDataSchema.validate(request.body, { abortEarly: false });
+        if (error) {
+            return response.status(400).json({
+                status: false,
+                message: error.details.map(it => it.message).join(", ")
+            });
+        }
+        return next();
+    }
+];

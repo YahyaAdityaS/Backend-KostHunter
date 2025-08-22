@@ -11,7 +11,7 @@ const router = express.Router();
 const upload = multer();
 
 
-app.get(`/`, getAllUser);
+app.get(`/`, getAllUser); 
 app.post(`/create`, [verifyAddUser, parseForm] ,createUser);
 app.put(`/:id`, [verifyEditUser, parseForm], updateUser);
 app.delete(`/:id`,deleteUser);
