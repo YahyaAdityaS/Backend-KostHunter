@@ -36,7 +36,7 @@ export const getAllKos = async (request: Request, response: Response) => { //end
 
 export const createKos = async (request: Request, response: Response) => {
     try {
-        const { name, address, pricePerMonth, facility, description, picture, gender, userId } = request.body
+        const { name, address, pricePerMonth, facility, description, picture, gender, userId, roomTotal, roomAvailable } = request.body
         if(!userId) {
             return response.status(400).json({
                 status: false,
@@ -49,7 +49,7 @@ export const createKos = async (request: Request, response: Response) => {
         if (request.file) filename = request.file.filename
 
         const newKos = await prisma.kos.create({ //await menunngu lalu dijalankan
-            data: { name, address, pricePerMonth: Number(pricePerMonth), facility, description, picture:filename, gender, userId: Number(userId) }
+            data: { name, address, pricePerMonth: Number(pricePerMonth), facility, description, picture:filename, gender, userId: Number(userId), roomTotal: Number(roomTotal), roomAvailable: Number(roomAvailable) }
         })
         return response.json({
             status: true,
@@ -68,24 +68,27 @@ export const createKos = async (request: Request, response: Response) => {
 
 export const updateKos = async (request: Request, response: Response) => {
     try {
-        const { id } = request.params;
-        const {name, address,pricePerMonth, facility, description, gender, userId} = request.body;
-        const findKos = await prisma.kos.findFirst({ where: { id: Number(id) } });
 
+        const {name, address,pricePerMonth, facility, description, gender, userId, roomTotal, roomAvailable} = request.body;
+        const { id } = request.params;
+
+        const findKos = await prisma.kos.findFirst({ where: { id: Number(id) } });
         if (!findKos) {
             return response.status(404).json({
                 status: false,
                 message: 'Kos tidak ditemukan'
             });
         }
-
-        const findUser = await prisma.user.findFirst({ where: { id: Number(userId) } });
+        
+        if (userId) {
+            const findUser = await prisma.user.findUnique({ where: { id: Number(userId) } 
+        });
+        
         if (!findUser) {
             return response.status(404).json({
                 status: false,
-                message: `User dengan id ${userId} tidak ditemukan`
-            })
-        }
+                message: `User dengan id ${userId} tidak ditemukan`});
+            }}
 
         // Default filename dari database
         let filename = findKos.picture;
@@ -105,6 +108,8 @@ export const updateKos = async (request: Request, response: Response) => {
                 name: name || findKos.name,
                 address: address || findKos.address,
                 pricePerMonth: pricePerMonth ? Number(pricePerMonth) : findKos.pricePerMonth,
+                roomTotal: roomTotal ? Number(roomTotal) : findKos.roomTotal,
+                roomAvailable: roomAvailable ? Number(roomAvailable) : findKos.roomAvailable,
                 description: description || findKos.description,
                 gender: gender || findKos.gender,
                 picture: filename,

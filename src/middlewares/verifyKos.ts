@@ -6,6 +6,8 @@ const addDataSchema = Joi.object({
     name: Joi.string().required(),
     address: Joi.string().required(),
     pricePerMonth: Joi.number().min(0).required(),
+    roomTotal: Joi.number().min(0).required(),
+    roomAvailable: Joi.number().min(0).required(),
     facility: Joi.string().required(),
     description: Joi.string().required(),
     picture: Joi.allow().optional(), //optional (Bisa diisi bisa tidak)
@@ -17,6 +19,8 @@ const editDataSchema = Joi.object({
     name: Joi.string().optional(),
     address: Joi.string().optional(),
     pricePerMonth: Joi.number().min(0).optional(),
+    roomTotal: Joi.number().min(0).optional(),
+    roomAvailable: Joi.number().min(0).optional(),
     facility: Joi.string().optional(),
     description: Joi.string().optional(),
     picture: Joi.allow().optional(), //optional (Bisa diisi bisa tidak)
