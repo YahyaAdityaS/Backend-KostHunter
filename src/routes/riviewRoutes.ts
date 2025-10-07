@@ -7,7 +7,7 @@ const router = Router();
 
 router.post("/", verifyCreateReview, verifyToken, createReview);
 router.get("/:kosId", getReviewsByKos);
-router.put("/:id", verifyEditReview, updateReview);
-router.delete("/:id", deleteReview);
+router.put("/:id", verifyToken ,verifyEditReview, updateReview);
+router.delete("/:id", verifyToken, deleteReview);
 
 export default router;

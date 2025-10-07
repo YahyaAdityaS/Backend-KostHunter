@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { PrismaClient, Status } from "@prisma/client";
 
 const prisma = new PrismaClient({ errorFormat: "pretty" });
@@ -54,7 +54,7 @@ export const getReviewsByKos = async (req: Request, res: Response) => {
 };
 
 // UPDATE review
-export const updateReview = async (req: Request, res: Response) => {
+export const updateReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { comment } = req.body;
@@ -80,7 +80,7 @@ export const updateReview = async (req: Request, res: Response) => {
       data: updated,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error mengupdate review", error });
+    next(error);
   }
 };
 
