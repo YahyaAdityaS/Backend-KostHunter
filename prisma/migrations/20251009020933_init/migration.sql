@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `review` ADD COLUMN `reply` VARCHAR(191) NOT NULL DEFAULT '',
+    MODIFY `comment` VARCHAR(191) NOT NULL DEFAULT '';

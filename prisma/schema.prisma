@@ -50,7 +50,7 @@ model Kos {
   address       String @default("")
   pricePerMonth Int    @default(0)
   roomTotal     Int    @default(0)
-  roomAvailable  Int    @default(0)
+  roomAvailable Int    @default(0)
   facility      String @default("")
   description   String @default("")
   picture       String @default("")
@@ -64,7 +64,8 @@ model Kos {
 model Review {
   id      Int    @id @default(autoincrement())
   kosId   Int
-  comment String
+  comment String @default("")
+  reply   String @default("")
   userId  Int
 
   kos  Kos  @relation(fields: [kosId], references: [id])
@@ -75,8 +76,8 @@ model Book {
   id        Int      @id @default(autoincrement())
   kosId     Int
   userId    Int
-  startDate DateTime
-  endDate   DateTime
+  startDate DateTime @default(now())
+  endDate   DateTime @default(now())
   status    Status
 
   kos  Kos  @relation(fields: [kosId], references: [id])

@@ -1,5 +1,5 @@
 import { Request, Response } from "express"; //impor ekspress
-import { $Enums, PrismaClient, Status } from "@prisma/client"; //
+import { $Enums, Gender, PrismaClient, Status } from "@prisma/client"; //
 import { request } from "http";
 import { BASE_URL } from "../global";
 import fs from "fs"
@@ -162,3 +162,100 @@ export const deleteKos = async (request: Request, response: Response) => {
             }).status(400)
     }
 }
+
+export const getAvailableKos = async (request: Request, response: Response) => {
+  try {
+    // Ambil kos yang memiliki roomAvailable > 0
+    const availableKos = await prisma.kos.findMany({
+      where: {
+        roomAvailable: {
+          gt: 0 // greater than 0
+        }
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, phone: true }
+        },
+        reviews: true,
+        books: true
+      },
+      orderBy: {
+        pricePerMonth: "asc" // opsional: sort berdasarkan harga
+      }
+    });
+
+    // Jika tidak ada kos yang tersedia
+    if (availableKos.length === 0) {
+      return response.status(404).json({
+        status: false,
+        message: "Tidak ada kos yang siap dihuni saat ini."
+      });
+    }
+
+    // Jika ada kos yang tersedia
+    return response.status(200).json({
+      status: true,
+      message: "Daftar kos yang siap dihuni berhasil ditampilkan.",
+      data: availableKos
+    });
+
+  } catch (error) {
+    return response.status(400).json({
+      status: false,
+      message: `Terjadi kesalahan saat mengambil data kos: ${error}`
+    });
+  }
+};
+
+export const getGenderKos = async (request: Request, response: Response) => {
+  try {
+    const { gender } = request.query;
+
+    // Validasi query gender harus ada
+    if (!gender) {
+      return response.status(400).json({
+        status: false,
+        message: "Parameter 'gender' wajib disertakan. Contoh: /kos/filter?gender=male",
+      });
+    }
+
+    // Validasi hanya boleh nilai tertentu
+    const allowedGenders = ["male", "female", "all"];
+    if (!allowedGenders.includes(gender.toString().toLowerCase())) {
+      return response.status(400).json({
+        status: false,
+        message: `Gender '${gender}' tidak valid. Gunakan salah satu dari: ${allowedGenders.join(", ")}.`,
+      });
+    }
+
+    // Ambil data kos berdasarkan gender
+    const kosList = await prisma.kos.findMany({
+      where: {
+        gender: gender.toString().toLowerCase() as any,
+        roomAvailable: { gt: 0 }, // hanya kos yang masih ada kamar
+      },
+    });
+
+    // Jika hasil kosong
+    if (kosList.length === 0) {
+      return response.status(404).json({
+        status: false,
+        message: `Tidak ada kos dengan gender '${gender}' yang tersedia untuk saat ini.`,
+      });
+    }
+
+    // Jika ditemukan
+    return response.status(200).json({
+      status: true,
+      message: `Daftar kos dengan gender '${gender}' berhasil diambil.`,
+      total: kosList.length,
+      data: kosList,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      status: false,
+      message: `Terjadi kesalahan server: ${error}`,
+    });
+  }
+};
