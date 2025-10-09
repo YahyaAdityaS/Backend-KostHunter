@@ -12,7 +12,7 @@ const upload = multer();
 
 
 app.get(`/`, getAllUser); 
-app.post(`/create`, [verifyToken,verifyAddUser, parseForm] ,createUser);
+app.post(`/create`, [verifyAddUser, parseForm] ,createUser);
 app.put(`/:id`, [verifyToken, verifyEditUser,parseForm], updateUser);
 app.delete(`/:id`,verifyToken, deleteUser);
 app.post(`/login`, [verifyAuthentication, parseForm], authentication);

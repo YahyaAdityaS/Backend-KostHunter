@@ -8,7 +8,6 @@ const upload = multer()
 /** schema validasi untuk Book */
 const addDataSchema = Joi.object({
     kosId: Joi.number().required(),
-    userId: Joi.number().required(),
     startDate: Joi.date().iso().required(),
     endDate: Joi.date().iso().required(),
     status: Joi.string().valid("pending", "accept", "reject").optional() // default pending
@@ -16,7 +15,6 @@ const addDataSchema = Joi.object({
 
 const editDataSchema = Joi.object({
     kosId: Joi.number().optional(),
-    userId: Joi.number().optional(),
     startDate: Joi.date().iso().optional(),
     endDate: Joi.date().iso().optional(),
     status: Joi.string().valid("pending", "accept", "reject").optional() // default pending

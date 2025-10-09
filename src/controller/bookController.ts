@@ -42,65 +42,78 @@ export const getAllBook = async (request: Request, response: Response) => {
 };
 
 export const createBook = async (request: Request, response: Response) => {
-    try {
-        const { startDate, endDate, kosId, userId, status } = request.body;
+  try {
+    // Ambil data user dari JWT (sudah dipasang di verifyToken)
+    const user = (request as any).user;
 
-        // 1. Cek kos ada atau tidak
-        const kos = await prisma.kos.findUnique({ where: { id: Number(kosId) } });
-        if (!kos) {
-            return response.status(404).json({
-                status: false,
-                message: `Kos dengan id ${kosId} tidak ditemukan`
-            });
-        }
-
-        // 2. Cek user ada atau tidak
-        const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
-        if (!user) {
-            return response.status(404).json({
-                status: false,
-                message: `User dengan id ${userId} tidak ditemukan`
-            });
-        }
-
-        // 3. Cek apakah user sudah booking kos yang sama dengan status pending
-        const existingBook = await prisma.book.findFirst({
-            where: {
-                userId: Number(userId),
-                kosId: Number(kosId),
-                status: "pending"
-            }
-        });
-        if (existingBook) {
-            return response.status(400).json({
-                status: false,
-                message: "User sudah punya booking pending untuk kos ini."
-            });
-        }
-
-        // 4. Buat booking baru
-        const newBook = await prisma.book.create({
-            data: {
-                startDate: new Date(startDate),
-                endDate: new Date(endDate),
-                kosId: Number(kosId),
-                userId: Number(userId),
-                status: status || Status.pending // default pending
-            }
-        });
-
-        return response.status(200).json({
-            status: true,
-            data: newBook,
-            message: `Booking berhasil dibuat oleh ${user.name} untuk kos ${kos.name}`
-        });
-
-    } catch (error) {
-        return response.status(400).json({
-            status: false,
-            message: `Yaa create booking error: ${error}`
-        });
+    if (!user) {
+      return response.status(401).json({
+        status: false,
+        message: "User tidak ditemukan dalam token",
+      });
     }
+
+    // 🔒 Cegah role owner membuat booking
+    if (user.role === "owner") {
+      return response.status(403).json({
+        status: false,
+        message: "Owner tidak dapat melakukan booking kos.",
+      });
+    }
+
+    // Ambil data dari body (userId tidak diambil dari body lagi)
+    const { startDate, endDate, kosId, status } = request.body;
+
+    // ✅ Validasi kos ada atau tidak
+    const kos = await prisma.kos.findUnique({
+      where: { id: Number(kosId) },
+    });
+    if (!kos) {
+      return response.status(404).json({
+        status: false,
+        message: `Kos dengan id ${kosId} tidak ditemukan.`,
+      });
+    }
+
+    // ✅ Cek apakah user sudah punya booking pending untuk kos yang sama
+    const existingBook = await prisma.book.findFirst({
+      where: {
+        userId: user.id,
+        kosId: Number(kosId),
+        status: "pending",
+      },
+    });
+
+    if (existingBook) {
+      return response.status(400).json({
+        status: false,
+        message: "Kamu sudah memiliki booking pending untuk kos ini.",
+      });
+    }
+
+    // ✅ Buat booking baru
+    const newBook = await prisma.book.create({
+      data: {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        kosId: Number(kosId),
+        userId: user.id, // <-- diambil dari JWT
+        status: status || Status.pending, // default pending
+      },
+    });
+
+    return response.status(200).json({
+      status: true,
+      data: newBook,
+      message: `Booking berhasil dibuat oleh ${user.name} untuk kos ${kos.name}`,
+    });
+  } catch (error: any) {
+    console.error("❌ Error createBook:", error);
+    return response.status(400).json({
+      status: false,
+      message: `Yaa create booking error: ${error.message}`,
+    });
+  }
 };
 
 export const updateBook = async (request: Request, response: Response) => {

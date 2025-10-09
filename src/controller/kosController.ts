@@ -36,35 +36,60 @@ export const getAllKos = async (request: Request, response: Response) => { //end
 
 export const createKos = async (request: Request, response: Response) => {
     try {
-        const { name, address, pricePerMonth, facility, description, picture, gender, userId, roomTotal, roomAvailable } = request.body
-        if(!userId) {
-            return response.status(400).json({
+        // Ambil data user dari token JWT
+        const user = (request as any).user;
+
+        if (!user) {
+            return response.status(401).json({
                 status: false,
-                messege: 'userId wajib di isi'
-            })
+                message: "User tidak ditemukan dalam token"
+            });
         }
 
+        //  Kalau role bukan owner, tolak
+        if (user.role !== "owner") {
+            return response.status(403).json({
+                status: false,
+                message: "Hanya owner yang dapat membuat kos"
+            });
+        }
 
-        let filename = "" //untuk upload foto menu
-        if (request.file) filename = request.file.filename
+        const { name, address, pricePerMonth, facility, description, gender, roomTotal, roomAvailable } = request.body;
 
-        const newKos = await prisma.kos.create({ //await menunngu lalu dijalankan
-            data: { name, address, pricePerMonth: Number(pricePerMonth), facility, description, picture:filename, gender, userId: Number(userId), roomTotal: Number(roomTotal), roomAvailable: Number(roomAvailable) }
-        })
-        return response.json({
+        let filename = "";
+        if (request.file) filename = request.file.filename; // ambil nama file dari multer
+
+        // 🏠 Buat data kos baru
+        const newKos = await prisma.kos.create({
+            data: {
+                name,
+                address,
+                pricePerMonth: Number(pricePerMonth),
+                facility,
+                description,
+                picture: filename,
+                gender,
+                userId: Number(user.id), // ambil userId dari token
+                roomTotal: Number(roomTotal),
+                roomAvailable: Number(roomAvailable)
+            }
+        });
+
+        return response.status(200).json({
             status: true,
             data: newKos,
-            message: `Buat kos bisa yaa`
-        }).status(200);
+            message: `Kos berhasil dibuat oleh ${user.name}`
+        });
+
+    } catch (error: any) {
+        console.error("❌ Error createKos:", error);
+
+        return response.status(400).json({
+            status: false,
+            message: `Yaa buat kos-nya error: ${error.message || error}`
+        });
     }
-    catch (eror) {
-        return response
-            .json({
-                status: false,
-                message: `Yaa buat kos-nya error ${eror}`
-            }).status(400);
-    }
-}
+};
 
 export const updateKos = async (request: Request, response: Response) => {
     try {

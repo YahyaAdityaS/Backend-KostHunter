@@ -107,3 +107,51 @@ export const deleteReview = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error menghapus review", error });
   }
 };
+
+export const replyReview = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // id review
+    const { reply } = req.body;
+    const ownerId = (req as any).user.id;
+
+    // Cek apakah review-nya ada
+    const review = await prisma.review.findUnique({
+      where: { id: Number(id) },
+      include: { kos: true },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        status: false,
+        message: "Review tidak ditemukan",
+      });
+    }
+
+    // Cek apakah yang login adalah pemilik kos terkait
+    if (review.kos.userId !== ownerId) {
+      return res.status(403).json({
+        status: false,
+        message: "Kamu tidak memiliki akses untuk membalas review ini",
+      });
+    }
+
+    // Update review dengan balasan
+    const updatedReview = await prisma.review.update({
+      where: { id: Number(id) },
+      data: { reply },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Balasan berhasil dikirim",
+      data: updatedReview,
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      message: "Terjadi kesalahan saat membalas review",
+      error: error.message,
+    });
+  }
+};

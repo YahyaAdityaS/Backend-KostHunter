@@ -29,17 +29,18 @@ export const getAllUser = async (request: Request, response: Response) => {
 export const createUser = async (request: Request, response: Response) => {
     try {
         const { name, email, password, phone, role} = request.body
-        const newUser = await prisma.user.create({
-            data: { name, email, password: md5(password),phone, role}
-        })
+         const existingUser = await prisma.user.findUnique({ where: { email: email } });
 
-        const existingUser = await prisma.user.findUnique({ where: { email: email } });
         if (existingUser) {
             return response.status(400).json({
                 status: false,
                 message: 'Email sudah terdaftar yaa'
             })
         }
+
+        const newUser = await prisma.user.create({
+            data: { name, email, password: md5(password),phone, role}
+        })
 
         return response.json({
             status: true,
