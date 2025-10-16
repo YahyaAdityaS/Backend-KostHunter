@@ -3,6 +3,7 @@ import userRoutes from './routes/userRoutes'
 import kosRoutes from './routes/kosRoutes'
 import bookRoutes from './routes/bookRoutes'
 import riviewRoutes from './routes/riviewRoutes'
+import facilityRoutes from './routes/facilityRoutes'
 
 const app = express()
 
@@ -14,5 +15,6 @@ app.use('/user', userRoutes)
 app.use('/kos', kosRoutes)
 app.use('/book', bookRoutes)
 app.use('/riview', riviewRoutes)
+app.use("/facility", facilityRoutes)
 
 export default app;

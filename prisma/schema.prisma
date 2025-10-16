@@ -51,7 +51,6 @@ model Kos {
   pricePerMonth Int    @default(0)
   roomTotal     Int    @default(0)
   roomAvailable Int    @default(0)
-  facility      String @default("")
   description   String @default("")
   picture       String @default("")
   gender        Gender
@@ -59,6 +58,15 @@ model Kos {
   user    User     @relation(fields: [userId], references: [id])
   reviews Review[]
   books   Book[]
+  facilities Facility[]  // relasi ke tabel fasilitas
+}
+
+model Facility {
+  id       Int    @id @default(autoincrement())
+  kosId    Int
+  name     String
+
+  kos Kos @relation(fields: [kosId], references: [id])
 }
 
 model Review {

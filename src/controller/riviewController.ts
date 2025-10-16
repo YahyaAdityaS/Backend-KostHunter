@@ -3,6 +3,23 @@ import { PrismaClient, Status } from "@prisma/client";
 
 const prisma = new PrismaClient({ errorFormat: "pretty" });
 // CREATE review
+export const getReviewsByKos = async (req: Request, res: Response) => {
+  try {
+    const { kosId } = req.params;
+    const reviews = await prisma.review.findMany({
+      where: { kosId: Number(kosId) },
+      include: {
+        user: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    res.status(200).json({ data: reviews });
+  } catch (error) {
+    res.status(500).json({ message: "Error mendapatkan review", error });
+  }
+};
 export const createReview = async (req: Request, res: Response) => {
   try {
     const { kosId, comment } = req.body;
@@ -35,23 +52,6 @@ export const createReview = async (req: Request, res: Response) => {
 };
 
 // GET all reviews by kosId
-export const getReviewsByKos = async (req: Request, res: Response) => {
-  try {
-    const { kosId } = req.params;
-    const reviews = await prisma.review.findMany({
-      where: { kosId: Number(kosId) },
-      include: {
-        user: {
-          select: { id: true, name: true },
-        },
-      },
-    });
-
-    res.status(200).json({ data: reviews });
-  } catch (error) {
-    res.status(500).json({ message: "Error mendapatkan review", error });
-  }
-};
 
 // UPDATE review
 export const updateReview = async (req: Request, res: Response, next: NextFunction) => {

@@ -63,7 +63,7 @@ export const updateUser = async (request: Request, response: Response) => {
 
         const findUser = await prisma.user.findFirst({ where: { id: Number(id) } })
         if (!findUser) return response
-            .status(200)
+            .status(404)
             .json({
                 status: false,
                 massage: 'Usernya tidak ada'
@@ -101,7 +101,7 @@ export const deleteUser = async (request: Request, response: Response) => {
         const { id } = request.params
         const findUser = await prisma.user.findFirst({ where: { id: Number(id) } })
         if (!findUser) return response
-            .status(200)
+            .status(404)
             .json({ status: false, message: 'Usernya tidak ada' })
 
         const deleteUser = await prisma.user.delete({
@@ -129,7 +129,7 @@ export const authentication = async (request: Request, response: Response) => {
         });
         if (!findUser) {
             return response
-                .status(200)
+                .status(400)
                 .json({
                     status: false,
                     logged: false,
