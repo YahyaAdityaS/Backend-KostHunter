@@ -37,7 +37,6 @@ export const createUser = async (request: Request, response: Response) => {
                 message: 'Email sudah terdaftar yaa'
             })
         }
-
         const newUser = await prisma.user.create({
             data: { name, email, password: md5(password),phone, role}
         })
@@ -57,44 +56,52 @@ export const createUser = async (request: Request, response: Response) => {
 }
 
 export const updateUser = async (request: Request, response: Response) => {
-    try {
-        const { id } = request.params
-        const { name, email, password, phone, role } = request.body
+  try {
+    const { id } = request.params;
+    const { name, email, password, phone, role } = request.body;
 
-        const findUser = await prisma.user.findFirst({ where: { id: Number(id) } })
-        if (!findUser) return response
-            .status(404)
-            .json({
-                status: false,
-                massage: 'Usernya tidak ada'
-            })
+    const findUser = await prisma.user.findFirst({
+      where: { id: Number(id) },
+    });
 
-        const updateUser = await prisma.user.update({
-            data: {
-                name: name || findUser.name, //or untuk perubahan (kalau ada yang kiri dijalankan, misal tidak ada dijalankan yang kanan)
-                email: email || findUser.email, //operasi tenary (sebelah kiri ? = kondisi (price) jika kondisinya true (:) false )
-                password: password || findUser.password,
-                phone: phone || findUser.phone,
-                role: role || findUser.role
-            },
-            where: { id: Number(id) }
-        })
-
-        return response.json({
-            status: true,
-            data: updateUser,
-            massage: 'Update user bisa yaa'
-        })
-
-    } catch (error) {
-        return response
-            .json({
-                status: false,
-                massage: `Yaa update user-nya error ${error}`
-            })
-            .status(400)
+    if (!findUser) {
+      return response.status(404).json({
+        status: false,
+        message: "User tidak ditemukan",
+      });
     }
-}
+
+    // 🔹 Validasi role (hanya boleh 'owner' atau 'society')
+    if (role && !["owner", "society"].includes(role)) {
+      return response.status(400).json({
+        status: false,
+        message: "Role tidak valid. Hanya boleh 'owner' atau 'society'.",
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: Number(id) },
+      data: {
+        name: name || findUser.name,
+        email: email || findUser.email,
+        password: password || findUser.password,
+        phone: phone || findUser.phone,
+        role: role || findUser.role,
+      },
+    });
+
+    return response.status(200).json({
+      status: true,
+      data: updatedUser,
+      message: "User berhasil diperbarui",
+    });
+  } catch (error) {
+    return response.status(400).json({
+      status: false,
+      message: `Yaa update user-nya error: ${error}`,
+    });
+  }
+};
 
 export const deleteUser = async (request: Request, response: Response) => {
     try {

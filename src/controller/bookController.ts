@@ -408,7 +408,7 @@ export const getBookReceipt = async (req: Request, res: Response) => {
     const doc = new PDFDocument({ margin: 50 });
     doc.font("Courier");
 
-    const folderPath = path.join(__dirname, "../public/receipt");
+    const folderPath = path.join(__dirname, "../../public/kos_receipt");
     if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
 
     const filePath = path.join(folderPath, `nota_booking_${booking.id}.pdf`);

@@ -1,7 +1,7 @@
 import express from "express"
 import { getAllKos, createKos, updateKos, deleteKos, getAvailableKos, getGenderKos } from "../controller/kosController"
 import { verifyAddKos, verifyEditKos } from "../middlewares/verifyKos"
-import uploadFile from "../middlewares/kosUpload"
+import uploadFile from "../middlewares/pictureUpload"
 import { verifyRole, verifyToken } from "../middlewares/authorization"
 
 const app = express()

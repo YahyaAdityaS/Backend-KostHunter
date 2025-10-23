@@ -147,39 +147,35 @@ export const updateKos = async (req: Request, res: Response) => {
 };
 
 /** 🗑️ DELETE Kos */
-export const deleteKos = async (req: Request, res: Response) => {
+export const deleteKos = async (request: Request, response: Response) => {
   try {
-    const user = (req as any).user;
-    const { id } = req.params;
+    const { id } = request.params;
+    const findKos = await prisma.kos.findUnique({
+      where: { id: Number(id) },
+      include: { books: true, reviews: true, facilities: true },
+    });
 
-    const kos = await prisma.kos.findUnique({ where: { id: Number(id) } });
-    if (!kos) {
-      return res.status(404).json({
+    if (!findKos) {
+      return response.status(404).json({
         status: false,
         message: `Kos dengan id ${id} tidak ditemukan`,
       });
     }
 
-    // Validasi owner
-    if (user.role !== "owner" || user.id !== kos.userId) {
-      return res.status(403).json({
-        status: false,
-        message: "Kamu tidak memiliki izin untuk menghapus kos ini",
-      });
-    }
+    // 🧹 Hapus semua relasi dulu
+    await prisma.book.deleteMany({ where: { kosId: Number(id) } });
+    await prisma.review.deleteMany({ where: { kosId: Number(id) } });
+    await prisma.facility.deleteMany({ where: { kosId: Number(id) } });
 
-    // Hapus gambar jika ada
-    const filePath = path.join(__dirname, `../public/kos_picture/${kos.picture}`);
-    if (fs.existsSync(filePath) && kos.picture !== "") fs.unlinkSync(filePath);
-
+    // 🔥 Baru hapus kos
     await prisma.kos.delete({ where: { id: Number(id) } });
 
-    return res.status(200).json({
+    return response.status(200).json({
       status: true,
-      message: "Kos berhasil dihapus",
+      message: `Kos '${findKos.name}' berhasil dihapus beserta semua datanya`,
     });
   } catch (error) {
-    return res.status(400).json({
+    return response.status(400).json({
       status: false,
       message: `Yah delete kos-nya error ${error}`,
     });
