@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { PrismaClient, Status } from "@prisma/client";
+import PDFDocument, { moveDown } from "pdfkit"
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient({ errorFormat: "pretty" });
 
@@ -333,11 +336,11 @@ export const getBookHistory = async (req: Request, res: Response) => {
   }
 };
 
-// GET /book/:id/receipt
 export const getBookReceipt = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { id } = req.params;
+    const { download } = req.query; // <== tambahan query untuk mode download
 
     const booking = await prisma.book.findUnique({
       where: { id: Number(id) },
@@ -373,20 +376,84 @@ export const getBookReceipt = async (req: Request, res: Response) => {
       namaPenyewa: booking.user.name,
       namaKos: booking.kos.name,
       alamatKos: booking.kos.address,
-      tanggalBooking: `${booking.startDate.toLocaleDateString()} - ${booking.endDate.toLocaleDateString()}`,
+      tanggalBooking: `${booking.startDate.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })} - ${booking.endDate.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })}`,
       hargaPerBulan: booking.kos.pricePerMonth,
       totalBayar: booking.kos.pricePerMonth,
       status: booking.status,
-      tanggalCetak: new Date().toLocaleDateString(),
+      tanggalCetak: new Date().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
     };
 
-    return res.status(200).json({
-      status: true,
-      message: "Nota berhasil diambil",
-      data: receipt,
+    // 🧾 Jika tidak download, kirim JSON
+    if (!download) {
+      return res.status(200).json({
+        status: true,
+        message: "Nota berhasil diambil",
+        data: receipt,
+      });
+    }
+
+    // 📄 Kalau ada query ?download=true → buat PDF
+    const doc = new PDFDocument({ margin: 50 });
+    doc.font("Courier");
+
+    const folderPath = path.join(__dirname, "../public/receipt");
+    if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
+
+    const filePath = path.join(folderPath, `nota_booking_${booking.id}.pdf`);
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // 🔹 Header
+    doc.fontSize(18).text("NOTA PEMESANAN KOS", { align: "center" });
+    doc.moveDown(2);
+    doc.fontSize(12);
+
+    // Fungsi bantu untuk sejajarkan teks
+    const addRow = (label: string, value: string | number) => {
+      const spacing = 130; // Lebar kolom label (sesuaikan)
+      const y = doc.y; // posisi vertikal sekarang
+      doc.text(`${label}`, 50, y);
+      doc.text(": ", 50 + spacing - 5, y);
+      doc.text(String(value), 50 + spacing + 5, y);
+      doc.moveDown();
+    };
+
+    // 🔹 Isi Nota
+    addRow("Nama Penyewa", receipt.namaPenyewa);
+    addRow("Nama Kos", receipt.namaKos);
+    addRow("Alamat Kos", receipt.alamatKos);
+    addRow("Tanggal Booking", receipt.tanggalBooking);
+    addRow("Harga per Bulan", `Rp${receipt.hargaPerBulan.toLocaleString("id-ID")}`);
+    addRow("Total Bayar", `Rp${receipt.totalBayar.toLocaleString("id-ID")}`);
+    addRow("Status", receipt.status);
+    addRow("Tanggal Cetak", receipt.tanggalCetak);
+
+    doc.moveDown(4);
+    doc.text("=================================================", { align: "left" });
+    doc.text("Terima kasih telah menggunakan layanan KosHunter!", {
+      align: "left",
     });
 
-    // 🔜 nanti bisa ditambah generate PDF pakai `pdfkit` / `reportlab`
+    doc.end();
+
+    // Setelah PDF selesai dibuat, kirim file ke user
+    stream.on("finish", () => {
+      res.download(filePath, `nota_booking_${booking.id}.pdf`, (err) => {
+        if (err) console.error("Gagal mengunduh file:", err);
+      });
+    });
   } catch (error) {
     return res.status(500).json({
       status: false,
