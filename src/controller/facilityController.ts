@@ -7,7 +7,8 @@ const prisma = new PrismaClient({ errorFormat: "pretty" });
 export const getAllFacility = async (req: Request, res: Response) => {
   try {
     const facilities = await prisma.facility.findMany({
-      include: { kos: true } // optional: untuk menampilkan info kos juga
+      include: { kos: { select: { name: true }}},
+      omit: { kosId: true }
     });
 
     if (facilities.length === 0) {

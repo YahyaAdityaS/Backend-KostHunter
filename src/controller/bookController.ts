@@ -460,4 +460,4 @@ export const getBookReceipt = async (req: Request, res: Response) => {
       message: `Error saat mencetak nota: ${error}`,
     });
   }
-};
+}
