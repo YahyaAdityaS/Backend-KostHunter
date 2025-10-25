@@ -59,6 +59,7 @@ model Kos {
   reviews Review[]
   books   Book[]
   facilities Facility[]  // relasi ke tabel fasilitas
+  kosPics KosPic[]
 }
 
 model Facility {
@@ -90,4 +91,13 @@ model Book {
 
   kos  Kos  @relation(fields: [kosId], references: [id])
   user User @relation(fields: [userId], references: [id])
+}
+
+model KosPic {
+  id          Int     @id @default(autoincrement())
+  kosId       Int
+  imagePath   String  @default("")
+  isThumbnail Boolean @default(false)
+
+  kos Kos @relation(fields: [kosId], references: [id])
 }

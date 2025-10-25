@@ -1,0 +1,12 @@
+-- CreateTable
+CREATE TABLE `KosPic` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `kosId` INTEGER NOT NULL,
+    `imagePath` VARCHAR(191) NOT NULL DEFAULT '',
+    `isThumbnail` BOOLEAN NOT NULL DEFAULT false,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `KosPic` ADD CONSTRAINT `KosPic_kosId_fkey` FOREIGN KEY (`kosId`) REFERENCES `Kos`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

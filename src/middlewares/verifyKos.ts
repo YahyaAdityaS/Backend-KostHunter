@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
-import { it } from "node:test";
+import multer from "multer";
+
+const upload = multer()
+export const parseForm = upload.none()
 
 const addDataSchema = Joi.object({
     name: Joi.string().required(),

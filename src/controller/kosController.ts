@@ -166,6 +166,7 @@ export const deleteKos = async (request: Request, response: Response) => {
     await prisma.book.deleteMany({ where: { kosId: Number(id) } });
     await prisma.review.deleteMany({ where: { kosId: Number(id) } });
     await prisma.facility.deleteMany({ where: { kosId: Number(id) } });
+    await prisma.kosPic.deleteMany({ where: { kosId: Number(id) } });
 
     // 🔥 Baru hapus kos
     await prisma.kos.delete({ where: { id: Number(id) } });

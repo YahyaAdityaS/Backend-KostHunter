@@ -1,14 +1,14 @@
-import { Router } from "express";
+import express  from "express";
 import { createReview, deleteReview, getReviewsByKos, updateReview, replyReview } from "../controller/riviewController";
 import { verifyCreateReview, verifyEditReview, verifyReplyReview } from "../middlewares/riviewValidation";
 import { verifyRole, verifyToken } from "../middlewares/authorization";
 
-const router = Router();
+const app = express();
 
-router.get("/:kosId", getReviewsByKos);
-router.post("/", verifyToken, verifyRole(["society"]), ...verifyCreateReview, createReview);
-router.post("/reply/:id", verifyToken, verifyRole(["owner"]), ...verifyReplyReview,replyReview);
-router.put(`/edit/:id`, verifyToken, verifyRole(["society"]), ...verifyEditReview, updateReview);
-router.delete("/:id", verifyToken, deleteReview);
+app.get("/:kosId", getReviewsByKos);
+app.post("/", verifyToken, verifyRole(["society"]), ...verifyCreateReview, createReview);
+app.post("/reply/:id", verifyToken, verifyRole(["owner"]), ...verifyReplyReview,replyReview);
+app.put(`/edit/:id`, verifyToken, verifyRole(["society"]), ...verifyEditReview, updateReview);
+app.delete("/:id", verifyToken, deleteReview);
 
-export default router;
+export default app;
