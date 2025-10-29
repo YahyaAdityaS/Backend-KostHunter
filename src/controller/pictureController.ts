@@ -36,25 +36,55 @@ export const getKosPictures = async (req: Request, res: Response) => {
 export const uploadKosPictures = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { id } = req.params;
+    const { kosId } = req.params;
 
     if (!user || user.role !== "owner") {
-      return res.status(403).json({ status: false, message: "Hanya owner yang bisa upload foto kos" });
+      return res.status(403).json({
+        status: false,
+        message: "Hanya owner yang bisa upload foto kos.",
+      });
     }
 
-    const kos = await prisma.kos.findUnique({ where: { id: Number(id) } });
-    if (!kos) return res.status(404).json({ status: false, message: "Kos tidak ditemukan" });
-    if (kos.userId !== user.id) return res.status(403).json({ status: false, message: "Kamu bukan pemilik kos ini" });
+    // 🧩 Validasi parameter
+    if (!kosId || isNaN(Number(kosId))) {
+      return res.status(400).json({
+        status: false,
+        message: "Parameter kosId wajib diisi dan harus berupa angka.",
+      });
+    }
 
+    // 🧩 Cek apakah kos ada dan milik owner
+    const kos = await prisma.kos.findUnique({
+      where: { id: Number(kosId) },
+    });
+
+    if (!kos) {
+      return res.status(404).json({
+        status: false,
+        message: "Kos tidak ditemukan.",
+      });
+    }
+
+    if (kos.userId !== user.id) {
+      return res.status(403).json({
+        status: false,
+        message: "Kamu bukan pemilik kos ini.",
+      });
+    }
+
+    // 🖼️ Ambil file dari request
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const thumbnail = files["thumbnail"]?.[0];
-    const photos = files["photos"] || [];
+    const thumbnail = files?.["thumbnail"]?.[0];
+    const photos = files?.["photos"] || [];
 
     if (!thumbnail && photos.length === 0) {
-      return res.status(400).json({ status: false, message: "Minimal unggah satu foto (thumbnail atau foto kos)" });
+      return res.status(400).json({
+        status: false,
+        message: "Minimal unggah satu foto (thumbnail atau foto kos).",
+      });
     }
 
-    // Simpan thumbnail
+    // 🪶 Simpan thumbnail (jika ada)
     if (thumbnail) {
       await prisma.kosPic.create({
         data: {
@@ -65,7 +95,7 @@ export const uploadKosPictures = async (req: Request, res: Response) => {
       });
     }
 
-    // Simpan foto biasa
+    // 🖼️ Simpan foto tambahan (bisa 1–3)
     for (const photo of photos) {
       await prisma.kosPic.create({
         data: {
@@ -76,10 +106,20 @@ export const uploadKosPictures = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(201).json({ status: true, message: "Foto kos berhasil diunggah" });
+    return res.status(201).json({
+      status: true,
+      message: "Foto kos berhasil diunggah.",
+      data: {
+        kosId: kos.id,
+        totalFoto: (thumbnail ? 1 : 0) + photos.length,
+      },
+    });
   } catch (error) {
-    console.error("Error uploadKosPictures:", error);
-    return res.status(500).json({ status: false, message: `Terjadi kesalahan: ${error}` });
+    console.error("❌ Error uploadKosPictures:", error);
+    return res.status(500).json({
+      status: false,
+      message: `Terjadi kesalahan saat upload foto: ${error}`,
+    });
   }
 };
 
@@ -141,6 +181,7 @@ export const deleteKosPicture = async (req: Request, res: Response) => {
       });
     }
 
+    // Cek kepemilikan
     if (picture.kos.userId !== user.id) {
       return res.status(403).json({
         status: false,
@@ -148,10 +189,16 @@ export const deleteKosPicture = async (req: Request, res: Response) => {
       });
     }
 
-    // Hapus file fisik
-    const fullPath = path.join(__dirname, "../", picture.imagePath);
+    // Dapatkan path absolut ke file
+    const rootDir = path.resolve(__dirname, "../../"); // naik 2 folder dari src/controller → ke root project
+    const fullPath = path.join(rootDir, picture.imagePath.replace(/\\/g, "/"));
+
+    // Hapus file fisik jika ada
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
+      console.log("✅ File dihapus:", fullPath);
+    } else {
+      console.warn("⚠️ File tidak ditemukan di:", fullPath);
     }
 
     // Hapus record dari database
@@ -162,6 +209,7 @@ export const deleteKosPicture = async (req: Request, res: Response) => {
       message: "Foto berhasil dihapus",
     });
   } catch (error) {
+    console.error("❌ Error saat menghapus foto:", error);
     return res.status(500).json({
       status: false,
       message: `Gagal menghapus foto: ${error}`,

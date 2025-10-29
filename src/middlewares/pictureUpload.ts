@@ -7,51 +7,62 @@ const prisma = new PrismaClient();
 
 export const uploadKosPic = multer({
   storage: multer.diskStorage({
-    destination: async (req, file, cb) => {
-      try {
-        const { id } = req.params;
-        const kos = await prisma.kos.findUnique({ where: { id: Number(id) } });
+    destination: (req, file, cb) => {
+      const { kosId } = req.params;
 
-        if (!kos) {
-          return cb(new Error("Kos tidak ditemukan"), "");
-        }
+      prisma.kos
+        .findUnique({ where: { id: Number(kosId) } })
+        .then((kos) => {
+          if (!kos) return cb(new Error("Kos tidak ditemukan"), "");
 
-        // Ganti spasi di nama kos jadi underscore biar aman di file system
-        const safeFolderName = kos.name.replace(/\s+/g, "_");
+          const safeFolderName = kos.name.replace(/\s+/g, "_");
+          const folderPath = path.join(
+            __dirname,
+            `../../public/kos_picture/${safeFolderName}`
+          );
 
-        const folderPath = path.join(__dirname, `../../public/kos_picture/${safeFolderName}`);
+          if (!fs.existsSync(folderPath)) {
+            fs.mkdirSync(folderPath, { recursive: true });
+          }
 
-        // kalau folder belum ada, buat otomatis
-        if (!fs.existsSync(folderPath)) {
-          fs.mkdirSync(folderPath, { recursive: true });
-        }
-
-        cb(null, folderPath);
-      } catch (err) {
-        cb(err as Error, "");
-      }
+          cb(null, folderPath);
+        })
+        .catch((err) => cb(err, ""));
     },
 
-    filename: async (req, file, cb) => {
-      const { id } = req.params;
-      const kos = await prisma.kos.findUnique({ where: { id: Number(id) } });
-      const safeFolderName = kos?.name.replace(/\s+/g, "_") || "kos_unknown";
+    filename: (req, file, cb) => {
+      const { kosId } = req.params;
 
-      const folderPath = path.join(__dirname, `../../public/kos_picture/${safeFolderName}`);
+      prisma.kos
+        .findUnique({ where: { id: Number(kosId) } })
+        .then((kos) => {
+          const safeFolderName = kos?.name.replace(/\s+/g, "_") || "kos_unknown";
+          const folderPath = path.join(
+            __dirname,
+            `../../public/kos_picture/${safeFolderName}`
+          );
 
-      // ambil semua file yang ada untuk menentukan urutan nama file selanjutnya
-      const existingFiles = fs.existsSync(folderPath)
-        ? fs.readdirSync(folderPath)
-        : [];
+          if (!fs.existsSync(folderPath)) {
+            fs.mkdirSync(folderPath, { recursive: true });
+          }
 
-      let nextNumber = existingFiles.length + 1;
-      let prefix = file.fieldname === "thumbnail" ? "thumbnail" : "pic";
-      const filename = `${prefix}_${nextNumber}${path.extname(file.originalname)}`;
+          const existingFiles = fs.readdirSync(folderPath);
+          const prefix = file.fieldname === "thumbnail" ? "thumbnail" : "pic";
+          const nextNumber = existingFiles.filter((f) =>
+            f.startsWith(prefix)
+          ).length + 1;
 
-      cb(null, filename);
+          const filename = `${prefix}_${nextNumber}${path.extname(
+            file.originalname
+          )}`;
+
+          cb(null, filename);
+        })
+        .catch((err) => cb(err, ""));
     },
   }),
-  limits: { fileSize: 2 * 1024 * 1024 }, // max 3MB per file
+
+  limits: { fileSize: 2 * 1024 * 1024 }, // max 2MB per file
 
   fileFilter: (req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/jpg"];
