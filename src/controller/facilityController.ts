@@ -31,7 +31,6 @@ export const getAllFacility = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getFacilityByKosId = async (req: Request, res: Response) => {
   try {
     const { kosId } = req.params;
@@ -66,7 +65,6 @@ export const getFacilityByKosId = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const createFacility = async (req: Request, res: Response) => {
   try {
@@ -106,7 +104,6 @@ export const createFacility = async (req: Request, res: Response) => {
   }
 };
 
-/** ✅ Update Facility — hanya owner kos yang memiliki fasilitas ini */
 export const updateFacility = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -150,7 +147,6 @@ export const updateFacility = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const deleteFacility = async (req: Request, res: Response) => {
   try {

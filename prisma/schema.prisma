@@ -52,7 +52,6 @@ model Kos {
   roomTotal     Int    @default(0)
   roomAvailable Int    @default(0)
   description   String @default("")
-  picture       String @default("")
   gender        Gender
 
   user    User     @relation(fields: [userId], references: [id])

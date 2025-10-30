@@ -5,7 +5,7 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-export const getKosPictures = async (req: Request, res: Response) => {
+export const getKosPicturesByKos = async (req: Request, res: Response) => {
   try {
     const { kosId } = req.params;
 

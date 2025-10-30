@@ -20,6 +20,10 @@ export const getAllKos = async (req: Request, res: Response) => {
         facilities: true,
         reviews: true,
         books: true,
+        kosPics: {
+          where: { isThumbnail: true },
+          select: { imagePath: true },
+        },
       },
       orderBy: { id: "desc" },
     });
@@ -68,7 +72,6 @@ export const createKos = async (req: Request, res: Response) => {
         address,
         pricePerMonth: Number(pricePerMonth),
         description,
-        picture: filename,
         gender,
         userId: user.id,
         roomTotal: Number(roomTotal),
@@ -110,15 +113,6 @@ export const updateKos = async (req: Request, res: Response) => {
       });
     }
 
-    let filename = findKos.picture;
-    if (req.file) {
-      const oldPath = path.join(__dirname, `../public/kos_picture/${findKos.picture}`);
-      if (fs.existsSync(oldPath) && findKos.picture !== "") {
-        fs.unlinkSync(oldPath);
-      }
-      filename = req.file.filename;
-    }
-
     const updatedKos = await prisma.kos.update({
       where: { id: Number(id) },
       data: {
@@ -129,7 +123,6 @@ export const updateKos = async (req: Request, res: Response) => {
         gender: gender ?? findKos.gender,
         roomTotal: roomTotal ? Number(roomTotal) : findKos.roomTotal,
         roomAvailable: roomAvailable ? Number(roomAvailable) : findKos.roomAvailable,
-        picture: filename,
       },
     });
 
