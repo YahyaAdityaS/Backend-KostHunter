@@ -1,13 +1,17 @@
-import express from "express";
-import { verifyToken, verifyRole } from "../middlewares/authorization";
-import { uploadKosPic } from "../middlewares/pictureUpload";
-import { uploadKosPictures, updateKosPicture, deleteKosPicture, getKosPicturesByKos } from "../controller/pictureController";
+import { Router } from 'express';
+import { uploadKosPhotos, getKosPhotos, deleteKosPhoto } from '../controller/pictureController';
+import { verifyToken, verifyRole } from '../middlewares/authorization';
+import { uploadKosPhotos as multerUpload, validateKosAndPhotos } from '../middlewares/pictureUpload';
+import { Role } from '@prisma/client';
 
-const app = express();
+const router = Router();
 
-app.get("/:kosId", getKosPicturesByKos);
-app.post("/:kosId", [verifyToken, verifyRole(["owner"]), uploadKosPic.fields([{ name: "thumbnail", maxCount: 1 }, { name: "photos", maxCount: 3 }])], uploadKosPictures);
-app.put("/:picId", [verifyToken, verifyRole(["owner"]), uploadKosPic.single("image")], updateKosPicture);
-app.delete("/:picId", [verifyToken, verifyRole(["owner"])], deleteKosPicture);
+// Semua route butuh auth dan role owner
+router.use(verifyToken);
+router.use(verifyRole([Role.owner]));
 
-export default app; 
+router.get('/kos/:kosId/', getKosPhotos);
+router.post('/kos/:kosId/', validateKosAndPhotos, multerUpload, uploadKosPhotos);
+router.delete('/kos/:kosId/photos/:photoId', deleteKosPhoto);
+
+export default router;

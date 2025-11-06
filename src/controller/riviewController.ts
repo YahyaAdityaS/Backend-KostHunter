@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { PrismaClient, Status } from "@prisma/client";
 
 const prisma = new PrismaClient({ errorFormat: "pretty" });
-// CREATE review
+
 export const getReviewsByKos = async (req: Request, res: Response) => {
   try {
     const { kosId } = req.params;
@@ -51,9 +51,6 @@ export const createReview = async (req: Request, res: Response) => {
   }
 };
 
-// GET all reviews by kosId
-
-// UPDATE review
 export const updateReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -84,7 +81,6 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-// DELETE review
 export const deleteReview = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

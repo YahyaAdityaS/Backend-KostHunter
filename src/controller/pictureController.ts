@@ -1,218 +1,96 @@
-import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import fs from "fs";
-import path from "path";
+import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
+import { CustomRequest } from '../types';
 
 const prisma = new PrismaClient();
 
-export const getKosPicturesByKos = async (req: Request, res: Response) => {
+// Upload foto kos
+export const uploadKosPhotos = async (req: CustomRequest, res: Response) => {
+  const kosId = parseInt(req.params.kosId ?? "0");
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
   try {
-    const { kosId } = req.params;
+    const photosToCreate: { imagePath: string; isThumbnail: boolean }[] = [];
 
-    const pictures = await prisma.kosPic.findMany({
-      where: { kosId: Number(kosId) },
-    });
+    // Handle thumbnail
+    if (files.thumbnail && files.thumbnail[0]) {
+      const file = files.thumbnail[0];
+      const imagePath = path.join('public/kos_image', kosId.toString(), file.filename);
+      photosToCreate.push({ imagePath, isThumbnail: true });
+    }
 
-    if (pictures.length === 0) {
-      return res.status(404).json({
-        status: false,
-        message: "Tidak ada foto untuk kos ini",
+    // Handle foto biasa
+    if (files.photos) {
+      files.photos.forEach((file) => {
+        const imagePath = path.join('public/kos_image', kosId.toString(), file.filename);
+        photosToCreate.push({ imagePath, isThumbnail: false });
       });
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Data foto kos berhasil diambil",
-      data: pictures,
+    // Simpan ke DB
+    const createdPhotos = await prisma.kosPic.createMany({
+      data: photosToCreate.map((p) => ({ ...p, kosId })),
+    });
+
+    res.status(201).json({
+      message: 'Photos uploaded successfully',
+      data: createdPhotos,
     });
   } catch (error) {
-    return res.status(500).json({
-      status: false,
-      message: `Terjadi kesalahan: ${error}`,
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to upload photos' });
   }
 };
 
-export const uploadKosPictures = async (req: Request, res: Response) => {
+// Get semua foto kos
+export const getKosPhotos = async (req: CustomRequest, res: Response) => {
+  const kosId = parseInt(req.params.kosId ?? "0");
+
   try {
-    const user = (req as any).user;
-    const { kosId } = req.params;
-
-    if (!user || user.role !== "owner") {
-      return res.status(403).json({
-        status: false,
-        message: "Hanya owner yang bisa upload foto kos.",
-      });
-    }
-
-    // 🧩 Validasi parameter
-    if (!kosId || isNaN(Number(kosId))) {
-      return res.status(400).json({
-        status: false,
-        message: "Parameter kosId wajib diisi dan harus berupa angka.",
-      });
-    }
-
-    // 🧩 Cek apakah kos ada dan milik owner
-    const kos = await prisma.kos.findUnique({
-      where: { id: Number(kosId) },
+    const photos = await prisma.kosPic.findMany({
+      where: { kosId },
     });
 
-    if (!kos) {
-      return res.status(404).json({
-        status: false,
-        message: "Kos tidak ditemukan.",
-      });
-    }
-
-    if (kos.userId !== user.id) {
-      return res.status(403).json({
-        status: false,
-        message: "Kamu bukan pemilik kos ini.",
-      });
-    }
-
-    // 🖼️ Ambil file dari request
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const thumbnail = files?.["thumbnail"]?.[0];
-    const photos = files?.["photos"] || [];
-
-    if (!thumbnail && photos.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Minimal unggah satu foto (thumbnail atau foto kos).",
-      });
-    }
-
-    // 🪶 Simpan thumbnail (jika ada)
-    if (thumbnail) {
-      await prisma.kosPic.create({
-        data: {
-          kosId: kos.id,
-          imagePath: thumbnail.path.replace(/\\/g, "/"),
-          isThumbnail: true,
-        },
-      });
-    }
-
-    // 🖼️ Simpan foto tambahan (bisa 1–3)
-    for (const photo of photos) {
-      await prisma.kosPic.create({
-        data: {
-          kosId: kos.id,
-          imagePath: photo.path.replace(/\\/g, "/"),
-          isThumbnail: false,
-        },
-      });
-    }
-
-    return res.status(201).json({
-      status: true,
-      message: "Foto kos berhasil diunggah.",
-      data: {
-        kosId: kos.id,
-        totalFoto: (thumbnail ? 1 : 0) + photos.length,
-      },
-    });
+    res.json({ data: photos });
   } catch (error) {
-    console.error("❌ Error uploadKosPictures:", error);
-    return res.status(500).json({
-      status: false,
-      message: `Terjadi kesalahan saat upload foto: ${error}`,
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch photos' });
   }
 };
 
+// Delete foto kos
+export const deleteKosPhoto = async (req: CustomRequest, res: Response) => {
+  const kosId = parseInt(req.params.kosId ?? "0");
+  const photoId = parseInt(req.params.photoId ?? "0");
+  const userId = req.user?.id;
 
-export const updateKosPicture = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
-    const { picId } = req.params;
-    const file = req.file;
-
-    const picture = await prisma.kosPic.findUnique({
-      where: { id: Number(picId) },
-      include: { kos: true },
-    });
-
-    if (!picture) {
-      return res.status(404).json({ status: false, message: "Foto tidak ditemukan" });
+    // Cek kepemilikan kos
+    const kos = await prisma.kos.findUnique({ where: { id: kosId } });
+    if (!kos || kos.userId !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    if (picture.kos.userId !== user.id) {
-      return res.status(403).json({ status: false, message: "Kamu bukan pemilik kos ini" });
+    // Ambil path file
+    const photo = await prisma.kosPic.findUnique({ where: { id: photoId } });
+    if (!photo) {
+      return res.status(404).json({ message: 'Photo not found' });
     }
 
-    // Hapus file lama
-    const oldPath = path.join(__dirname, "../", picture.imagePath);
-    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    // Hapus file dari server
+    const filePath = path.join(__dirname, '../../', photo.imagePath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
 
-    // Simpan foto baru
-    const newPath = file?.path.replace(/\\/g, "/") || picture.imagePath;
-    const updated = await prisma.kosPic.update({
-      where: { id: Number(picId) },
-      data: { imagePath: newPath },
-    });
+    // Hapus dari DB
+    await prisma.kosPic.delete({ where: { id: photoId } });
 
-    return res.status(200).json({
-      status: true,
-      message: "Foto kos berhasil diperbarui",
-      data: updated,
-    });
+    res.json({ message: 'Photo deleted successfully' });
   } catch (error) {
-    return res.status(500).json({ status: false, message: `Gagal update foto: ${error}` });
-  }
-};
-
-export const deleteKosPicture = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const { picId } = req.params;
-
-    const picture = await prisma.kosPic.findUnique({
-      where: { id: Number(picId) },
-      include: { kos: true },
-    });
-
-    if (!picture) {
-      return res.status(404).json({
-        status: false,
-        message: "Foto tidak ditemukan",
-      });
-    }
-
-    // Cek kepemilikan
-    if (picture.kos.userId !== user.id) {
-      return res.status(403).json({
-        status: false,
-        message: "Kamu tidak memiliki izin menghapus foto ini",
-      });
-    }
-
-    // Dapatkan path absolut ke file
-    const rootDir = path.resolve(__dirname, "../../"); // naik 2 folder dari src/controller → ke root project
-    const fullPath = path.join(rootDir, picture.imagePath.replace(/\\/g, "/"));
-
-    // Hapus file fisik jika ada
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-      console.log("✅ File dihapus:", fullPath);
-    } else {
-      console.warn("⚠️ File tidak ditemukan di:", fullPath);
-    }
-
-    // Hapus record dari database
-    await prisma.kosPic.delete({ where: { id: Number(picId) } });
-
-    return res.status(200).json({
-      status: true,
-      message: "Foto berhasil dihapus",
-    });
-  } catch (error) {
-    console.error("❌ Error saat menghapus foto:", error);
-    return res.status(500).json({
-      status: false,
-      message: `Gagal menghapus foto: ${error}`,
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to delete photo' });
   }
 };
