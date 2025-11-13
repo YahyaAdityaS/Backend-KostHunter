@@ -19,7 +19,7 @@ const addDataSchema = Joi.object({
     password: Joi.string().min(3).required(),
     phone: Joi.string().required(),
     role: Joi.allow().required() //optional (Bisa diisi bisa tidak)
-}).unknown(true)
+}).unknown(false)
 
 const editDataSchema = Joi.object({
     name: Joi.string().optional(),
@@ -27,7 +27,7 @@ const editDataSchema = Joi.object({
     password: Joi.string().min(3).optional(),
     phone: Joi.string().optional(),
     role: Joi.allow().optional() //optional (Bisa diisi bisa tidak)
-}).unknown(true)
+}).unknown(false)
 
 export const verifyAuthentication = (
     request: Request,

@@ -64,7 +64,7 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
       return res.status(404).json({ message: "Review tidak ditemukan" });
     }
     if (review.userId !== userId) {
-      return res.status(403).json({ message: "Forbidden: Bukan riview anda" });
+      return res.status(403).json({ message: "Bukan riview anda" });
     }
 
     const updated = await prisma.review.update({
@@ -93,7 +93,7 @@ export const deleteReview = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Review tidak ditemukan" });
     }
     if (review.userId !== userId) {
-      return res.status(403).json({ message: "Forbidden: Bukan riview anda" });
+      return res.status(403).json({ message: "Bukan riview anda" });
     }
 
     await prisma.review.delete({ where: { id: Number(id) } });
@@ -147,6 +147,124 @@ export const replyReview = async (req: Request, res: Response) => {
     res.status(500).json({
       status: false,
       message: "Terjadi kesalahan saat membalas review",
+      error: error.message,
+    });
+  }
+};
+
+export const editReplyReview = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // id review
+    const { reply } = req.body;
+    const ownerId = (req as any).user.id;
+
+    // Validasi input
+    if (!reply || reply.trim() === "") {
+      return res.status(400).json({
+        status: false,
+        message: "Balasan tidak boleh kosong",
+      });
+    }
+
+    // Cek apakah review ada
+    const review = await prisma.review.findUnique({
+      where: { id: Number(id) },
+      include: { kos: true },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        status: false,
+        message: "Review tidak ditemukan",
+      });
+    }
+
+    // Cek apakah user adalah pemilik kos
+    if (review.kos.userId !== ownerId) {
+      return res.status(403).json({
+        status: false,
+        message: "Kamu tidak memiliki akses untuk mengedit balasan review ini",
+      });
+    }
+
+    if (!review.reply) {
+      return res.status(400).json({
+        status: false,
+        message: "Review ini belum memiliki balasan, gunakan endpoint balas terlebih dahulu",
+      });
+    }
+
+    // Update balasan
+    const updatedReview = await prisma.review.update({
+      where: { id: Number(id) },
+      data: { reply },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Balasan berhasil diperbarui",
+      data: updatedReview,
+    });
+  } catch (error: any) {
+    console.error("Error editReplyReview:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Terjadi kesalahan saat mengedit balasan review",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteReplyReview = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // id review
+    const ownerId = (req as any).user.id;
+
+    // Cari review beserta kos-nya
+    const review = await prisma.review.findUnique({
+      where: { id: Number(id) },
+      include: { kos: true },
+    });
+
+    if (!review) {
+      return res.status(404).json({
+        status: false,
+        message: "Review tidak ditemukan",
+      });
+    }
+
+    // Pastikan yang hapus adalah pemilik kos
+    if (review.kos.userId !== ownerId) {
+      return res.status(403).json({
+        status: false,
+        message: "Kamu tidak memiliki akses untuk menghapus balasan ini",
+      });
+    }
+
+    // Pastikan review sudah memiliki balasan
+    if (!review.reply) {
+      return res.status(400).json({
+        status: false,
+        message: "Review ini belum memiliki balasan untuk dihapus",
+      });
+    }
+
+    // Hapus balasan (set reply = null)
+    const updatedReview = await prisma.review.update({
+      where: { id: Number(id) },
+      data: { reply: "" },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Balasan berhasil dihapus",
+      data: updatedReview,
+    });
+  } catch (error: any) {
+    console.error("Error deleteReplyReview:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Terjadi kesalahan saat menghapus balasan review",
       error: error.message,
     });
   }

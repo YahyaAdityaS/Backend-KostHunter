@@ -9,8 +9,8 @@ app.use(express.json())
 app.get(`/`, getAllKos)
 app.get(`/Available`, getAvailableKos)
 app.get(`/filter`, getGenderKos)
-app.post(`/create`, [verifyToken, verifyRole(["owner"]), verifyAddKos, parseForm], createKos)
-app.put(`/:id`, [verifyToken, verifyRole(["owner"]), verifyEditKos, parseForm], updateKos)
+app.post(`/create`, [verifyToken, parseForm, verifyRole(["owner"]), verifyAddKos, parseForm], createKos)
+app.put(`/:id`, [verifyToken, parseForm, verifyRole(["owner"]), verifyEditKos], updateKos)
 app.delete(`/:id`, [verifyToken, verifyRole(["owner"])], deleteKos)
 
 export default app

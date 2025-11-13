@@ -19,7 +19,7 @@ export const getAllKos = async (req: Request, res: Response) => {
         user: { select: { id: true, name: true, phone: true } },
         facilities: true,
         reviews: true,
-        books: true,
+        books: false,
         kosPics: {
           where: { isThumbnail: true },
           select: { imagePath: true },
@@ -41,11 +41,11 @@ export const getAllKos = async (req: Request, res: Response) => {
   }
 };
 
-/** 🏠 CREATE Kos */
 export const createKos = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
 
+    //cek user ada
     if (!user) {
       return res.status(401).json({
         status: false,
@@ -63,8 +63,12 @@ export const createKos = async (req: Request, res: Response) => {
 
     const { name, address, pricePerMonth, description, gender, roomTotal, roomAvailable } = req.body;
 
-    let filename = "";
-    if (req.file) filename = req.file.filename;
+    if (Number(roomAvailable) > Number(roomTotal)) {
+      return res.status(400).json({
+        status: false,
+        message: "Jumlah kamar tersedia tidak boleh lebih banyak dari total kamar.",
+      });
+    }
 
     const newKos = await prisma.kos.create({
       data: {
@@ -93,7 +97,7 @@ export const createKos = async (req: Request, res: Response) => {
   }
 };
 
-/** ✏️ UPDATE Kos */
+
 export const updateKos = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -110,6 +114,12 @@ export const updateKos = async (req: Request, res: Response) => {
       return res.status(403).json({
         status: false,
         message: "Kamu tidak punya izin untuk mengedit kos ini",
+      });
+    }
+    if (Number(roomAvailable) > Number(roomTotal)) {
+      return res.status(400).json({
+        status: false,
+        message: "Jumlah kamar tersedia tidak boleh lebih banyak dari total kamar.",
       });
     }
 
@@ -139,10 +149,11 @@ export const updateKos = async (req: Request, res: Response) => {
   }
 };
 
-/** 🗑️ DELETE Kos */
 export const deleteKos = async (request: Request, response: Response) => {
   try {
+    const user = (request as any).user; // ambil data user dari token
     const { id } = request.params;
+
     const findKos = await prisma.kos.findUnique({
       where: { id: Number(id) },
       include: { books: true, reviews: true, facilities: true },
@@ -152,6 +163,21 @@ export const deleteKos = async (request: Request, response: Response) => {
       return response.status(404).json({
         status: false,
         message: `Kos dengan id ${id} tidak ditemukan`,
+      });
+    }
+
+    if (user.role !== "owner") {
+      return response.status(403).json({
+        status: false,
+        message: "Hanya owner yang boleh menghapus data kos.",
+      });
+    }
+
+    // ❌ Kalau owner bukan pemilik kos tersebut
+    if (findKos.userId !== user.id) {
+      return response.status(403).json({
+        status: false,
+        message: "Kamu tidak punya izin untuk menghapus kos ini.",
       });
     }
 
@@ -176,7 +202,7 @@ export const deleteKos = async (request: Request, response: Response) => {
   }
 };
 
-/** ✅ GET Kos yang masih tersedia */
+/** GET Kos yang masih tersedia */
 export const getAvailableKos = async (req: Request, res: Response) => {
   try {
     const availableKos = await prisma.kos.findMany({

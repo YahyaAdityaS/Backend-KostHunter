@@ -11,14 +11,14 @@ const addDataSchema = Joi.object({
     startDate: Joi.date().iso().required(),
     endDate: Joi.date().iso().required(),
     status: Joi.string().valid("pending", "accept", "reject").optional() // default pending
-}). unknown(true)
+}). unknown(false)
 
 const editDataSchema = Joi.object({
     kosId: Joi.number().optional(),
     startDate: Joi.date().iso().optional(),
     endDate: Joi.date().iso().optional(),
     status: Joi.string().valid("pending", "accept", "reject").optional() // default pending
-}). unknown(true)
+}). unknown(false)
 
 export const verifyCreateBook = [
     upload.none(), // supaya form-data bisa diparse

@@ -9,7 +9,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 
 app.get(`/`, getAllBook) //perlu di hapus ga sih?
-app.get(`/history`, [verifyToken, verifyRole(["society"])], getBookHistory)
+app.get(`/history`, verifyToken, getBookHistory)
 app.get("/receipt/pdf/:id", [verifyToken, verifyRole(["society"])], getBookReceipt);
 app.post(`/create`, [verifyToken, verifyRole(["society"]), ...verifyCreateBook], createBook)
 app.put(`/:id`, [verifyToken, verifyRole(["society", "owner"]), ...verifyEditBook], updateBook)

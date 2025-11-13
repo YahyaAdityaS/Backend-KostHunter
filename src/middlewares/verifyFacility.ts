@@ -17,7 +17,7 @@ const addFacilitySchema = Joi.object({
 
 const editFacilitySchema = Joi.object({
   name: Joi.string().min(2).optional(),
-}).unknown(true);
+}).unknown(false);
 
 export const verifyAddFacility = [
   upload.none(),

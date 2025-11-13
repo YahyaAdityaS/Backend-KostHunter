@@ -29,8 +29,15 @@ export const getAllUser = async (request: Request, response: Response) => {
 export const createUser = async (request: Request, response: Response) => {
     try {
         const { name, email, password, phone, role} = request.body
-         const existingUser = await prisma.user.findUnique({ where: { email: email } });
+        const existingUser = await prisma.user.findUnique({ where: { email: email } });
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+        if (!emailRegex.test(email)) {
+            return response.status(400).json({
+                status: false,
+                message: "Format email tidak valid, gunakan format seperti 'abunaca@gmail.com'"
+            });
+        }
         if (existingUser) {
             return response.status(400).json({
                 status: false,
@@ -59,6 +66,8 @@ export const updateUser = async (request: Request, response: Response) => {
   try {
     const { id } = request.params;
     const { name, email, password, phone, role } = request.body;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const existingUser = await prisma.user.findUnique({ where: { email: email } });
 
     const findUser = await prisma.user.findFirst({
       where: { id: Number(id) },
@@ -69,6 +78,18 @@ export const updateUser = async (request: Request, response: Response) => {
         status: false,
         message: "User tidak ditemukan",
       });
+    }
+    if (!emailRegex.test(email)) {
+          return response.status(400).json({
+            status: false,
+            message: "Format email tidak valid, gunakan format seperti 'abun@gmail.com'"
+          });
+    }
+    if (existingUser) {
+            return response.status(400).json({
+                status: false,
+                message: 'Email sudah terdaftar yaa'
+      })
     }
 
     // 🔹 Validasi role (hanya boleh 'owner' atau 'society')
@@ -103,44 +124,77 @@ export const updateUser = async (request: Request, response: Response) => {
   }
 };
 
-export const deleteUser = async (request: Request, response: Response) => {
-    try {
-        const { id } = request.params
-        const findUser = await prisma.user.findFirst({ where: { id: Number(id) } })
-        if (!findUser) return response
-            .status(404)
-            .json({ status: false, message: 'Usernya tidak ada' })
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user; // data dari middleware verifyToken
 
-        const deleteUser = await prisma.user.delete({
-            where: { id: Number(id) }
-        })
-        return response.json({
-            status: true,
-            data: deleteUser,
-            message: 'Usernya bisa dihapus yaa'
-        }).status(200)
-    } catch (eror) {
-        return response
-            .json({
-                status: false,
-                message: `Yaa delete user-nya error ${eror}`
-            }).status(400)
+    // Pastikan user dari token valid
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: "Token tidak valid atau belum login",
+      });
     }
-}
+
+    // Cek apakah user ada di database
+    const findUser = await prisma.user.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!findUser) {
+      return res.status(404).json({
+        status: false,
+        message: "User tidak ditemukan",
+      });
+    }
+
+    // Cek apakah user mau hapus dirinya sendiri
+    if (user.id !== Number(id)) {
+      return res.status(403).json({
+        status: false,
+        message: "Kamu tidak bisa menghapus akun milik orang lain!",
+      });
+    }
+
+    // 🔹 Hapus user
+    const deletedUser = await prisma.user.delete({
+      where: { id: Number(id) },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Akunmu berhasil dihapus",
+      data: deletedUser,
+    });
+  } catch (error) {
+    console.error("❌ Error deleteUser:", error);
+    return res.status(500).json({
+      status: false,
+      message: `Terjadi kesalahan saat menghapus user: ${error}`,
+    });
+  }
+};
 
 export const authentication = async (request: Request, response: Response) => {
     try {
         const { email, password } = request.body;
-        const findUser = await prisma.user.findFirst({
-            where: { email, password: md5(password) },
-        });
+        const findUser = await prisma.user.findFirst({where: { email, password: md5(password) }});
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return response.status(400).json({
+                status: false,
+                message: "Format email tidak valid, gunakan format seperti 'abunaca@gmail.com'"
+            });
+        }
         if (!findUser) {
             return response
                 .status(400)
                 .json({
                     status: false,
                     logged: false,
-                    massage: `Email sama password salah`
+                    massage: `Email atau password salah`
                 })
         }
         let data = {

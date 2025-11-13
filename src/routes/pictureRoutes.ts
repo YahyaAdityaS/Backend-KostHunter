@@ -4,14 +4,14 @@ import { verifyToken, verifyRole } from '../middlewares/authorization';
 import { uploadKosPhotos as multerUpload, validateKosAndPhotos } from '../middlewares/pictureUpload';
 import { Role } from '@prisma/client';
 
-const router = Router();
+const app = Router();
 
 // Semua route butuh auth dan role owner
-router.use(verifyToken);
-router.use(verifyRole([Role.owner]));
+app.use(verifyToken);
+app.use(verifyRole([Role.owner]));
 
-router.get('/kos/:kosId/', getKosPhotos);
-router.post('/kos/:kosId/', validateKosAndPhotos, multerUpload, uploadKosPhotos);
-router.delete('/kos/:kosId/photos/:photoId', deleteKosPhoto);
+app.get('/kos/:kosId/', getKosPhotos);
+app.post('/kos/:kosId/', validateKosAndPhotos, multerUpload, uploadKosPhotos);
+app.delete('/kos/:kosId/photos/:photoId', deleteKosPhoto);
 
-export default router;
+export default app;

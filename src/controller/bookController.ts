@@ -44,8 +44,6 @@ export const getAllBook = async (request: Request, response: Response) => {
   }
 };
 
-
-
 export const createBook = async (request: Request, response: Response) => {
   try {
     const user = (request as any).user;
@@ -64,7 +62,14 @@ export const createBook = async (request: Request, response: Response) => {
       });
     }
 
+    
     const { startDate, endDate, kosId } = request.body;
+
+    if (new Date(startDate) > new Date(endDate)) {
+      return response.status(400).json({
+        status: false,
+        message: "Tanggal mulai tidak boleh setelah tanggal berakhir.",
+      });}
 
     const kos = await prisma.kos.findUnique({ where: { id: Number(kosId) } });
     if (!kos) {
@@ -123,7 +128,7 @@ export const updateBook = async (request: Request, response: Response) => {
       include: { kos: true },
     });
 
-    // 📌 Validasi booking ada atau tidak
+    // Validasi booking ada atau tidak
     if (!findBook) {
       return response.status(404).json({
         status: false,
@@ -165,6 +170,12 @@ export const updateBook = async (request: Request, response: Response) => {
         },
       });
 
+      if (new Date(startDate) > new Date(endDate)) {
+      return response.status(400).json({
+        status: false,
+        message: "Tanggal mulai tidak boleh setelah tanggal berakhir.",
+      });}
+
       return response.status(200).json({
         status: true,
         role: user.role,
@@ -190,6 +201,19 @@ export const updateBook = async (request: Request, response: Response) => {
         });
       }
 
+      // 🔥 Ambil data kos terlebih dahulu
+      const kos = await prisma.kos.findUnique({
+        where: { id: findBook.kosId },
+      });
+
+      // 🛑 Tambahkan validasi untuk hindari 'possibly null'
+      if (!kos) {
+        return response.status(404).json({
+          status: false,
+          message: "Kos terkait tidak ditemukan.",
+        });
+      }
+
       // Pastikan status valid
       const validStatus = ["pending", "accept", "reject"];
       if (!validStatus.includes(status)) {
@@ -199,6 +223,11 @@ export const updateBook = async (request: Request, response: Response) => {
         });
       }
 
+      await prisma.kos.update({
+          where: { id: kos.id },
+          data: { roomAvailable: kos.roomAvailable - 1 },
+        });
+
       const updatedBook = await prisma.book.update({
         where: { id: Number(id) },
         data: { status },
@@ -207,7 +236,7 @@ export const updateBook = async (request: Request, response: Response) => {
       return response.status(200).json({
         status: true,
         role: user.role,
-        message: `Status booking berhasil diubah menjadi '${status}'.`,
+        message: `Status booking berhasil diubah menjadi '${status}'`,
         data: updatedBook,
       });
     }
@@ -218,7 +247,7 @@ export const updateBook = async (request: Request, response: Response) => {
     });
 
   } catch (error: any) {
-    console.error("❌ Error updateBook:", error);
+    console.error("Error updateBook:", error);
     return response.status(500).json({
       status: false,
       message: `Terjadi kesalahan saat mengubah booking: ${error.message}`,
@@ -272,63 +301,82 @@ export const getBookHistory = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const { month, year } = req.query;
 
-    if (!user || user.role !== "owner") {
-      return res.status(403).json({
-        status: false,
-        message: "Hanya owner yang dapat melihat histori booking",
-      });
-    }
-
     if (!month || !year) {
       return res.status(400).json({
         status: false,
-        message:
-          "Parameter 'month' dan 'year' wajib disertakan. Contoh: /book/history?month=10&year=2025",
+        message: "Parameter 'month' dan 'year' wajib disertakan. Contoh: /book/history?month=10&year=2025",
       });
     }
 
-    const ownerKos = await prisma.kos.findMany({
-      where: { userId: user.id },
-      select: { id: true },
-    });
-
-    if (ownerKos.length === 0) {
-      return res.status(404).json({
-        status: false,
-        message: "Anda belum memiliki kos.",
-      });
-    }
-
-    const kosIds = ownerKos.map((k) => k.id);
     const startDate = new Date(Number(year), Number(month) - 1, 1);
     const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
 
-    const bookings = await prisma.book.findMany({
-      where: {
-        kosId: { in: kosIds },
-        startDate: { gte: startDate, lte: endDate },
-      },
-      include: {
-        kos: { select: { id: true, name: true, address: true } },
-        user: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { startDate: "desc" },
-    });
+    let bookings;
 
-    if (bookings.length === 0) {
+    // 🔹 Cek role
+    if (user.role === "owner") {
+      // Owner → lihat semua booking di kos miliknya
+      const ownerKos = await prisma.kos.findMany({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+
+      if (ownerKos.length === 0) {
+        return res.status(404).json({
+          status: false,
+          message: "Anda belum memiliki kos.",
+        });
+      }
+
+      const kosIds = ownerKos.map((k) => k.id);
+
+      bookings = await prisma.book.findMany({
+        where: {
+          kosId: { in: kosIds },
+          startDate: { gte: startDate, lte: endDate },
+        },
+        include: {
+          kos: { select: { id: true, name: true, address: true } },
+          user: { select: { id: true, name: true, phone: true } },
+        },
+        orderBy: { startDate: "desc" },
+      });
+
+    } else if (user.role === "society") {
+      // Society → lihat booking miliknya sendiri
+      bookings = await prisma.book.findMany({
+        where: {
+          userId: user.id,
+          startDate: { gte: startDate, lte: endDate },
+        },
+        include: {
+          kos: { select: { id: true, name: true, address: true } },
+        },
+        orderBy: { startDate: "desc" },
+      });
+    } else {
+      return res.status(403).json({
+        status: false,
+        message: "Role tidak dikenali.",
+      });
+    }
+
+    if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         status: false,
-        message: "Tidak ada transaksi untuk bulan tersebut",
+        message: "Tidak ada histori booking untuk bulan tersebut.",
       });
     }
 
     return res.status(200).json({
       status: true,
-      message: "Histori booking berhasil diambil",
+      role: user.role,
       total: bookings.length,
       data: bookings,
     });
+
   } catch (error) {
+    console.error("❌ Error getBookHistory:", error);
     return res.status(500).json({
       status: false,
       message: `Terjadi kesalahan server: ${error}`,

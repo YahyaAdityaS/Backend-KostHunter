@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import userRoutes from './routes/userRoutes'
 import kosRoutes from './routes/kosRoutes'
 import bookRoutes from './routes/bookRoutes'
@@ -7,6 +8,14 @@ import facilityRoutes from './routes/facilityRoutes'
 import pictureRoutes from './routes/pictureRoutes'
 
 const app = express()
+
+app.use(
+  cors({
+    origin: "http://localhost:3000", // URL frontend Next.js kamu
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json()); // ← WAJIB
 app.use(express.urlencoded({ extended: true }));
